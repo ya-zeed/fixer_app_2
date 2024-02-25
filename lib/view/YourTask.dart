@@ -89,6 +89,26 @@ class _YourTaskState extends State<YourTask> {
     return imageSnapshot;
   }
 
+  Future<void> updateTaskCompletionStatus(String taskId, bool? isDone) async {
+    var taskDoc =
+        FirebaseFirestore.instance.collection('tasks').doc(user?.displayName);
+
+    try {
+      var docSnapshot = await taskDoc.get();
+      if (docSnapshot.exists) {
+        var tasks = List.from(docSnapshot.data()?['tasks'] ?? []);
+        var taskIndex = tasks.indexWhere((task) => task['task'] == taskId);
+        if (taskIndex != -1) {
+          tasks[taskIndex]['isDone'] =
+              isDone.toString(); // Update isDone status
+          await taskDoc.update({'tasks': tasks});
+        }
+      }
+    } catch (e) {
+      print('Error updating task completion status: $e');
+    }
+  }
+
   void getTasksFromFirestore() async {
     try {
       var tasksSnapshot = await FirebaseFirestore.instance
@@ -202,6 +222,17 @@ class _YourTaskState extends State<YourTask> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Checkbox(
+                                    value: task['isDone'] == 'true',
+                                    onChanged: (bool? newValue) {
+                                      setState(() {
+                                        task['isDone'] = newValue.toString();
+                                        updateTaskCompletionStatus(
+                                            task['task']!,
+                                            newValue); // Implement this method
+                                      });
+                                    },
+                                  ),
                                   IconButton(
                                     icon: Icon(Icons.add_a_photo),
                                     onPressed: () async {

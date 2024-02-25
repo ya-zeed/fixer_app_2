@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fixer_app/view/AssignTask.dart';
+import 'package:fixer_app/view/CreateTeam.dart';
 import 'package:fixer_app/view/EmployeeTask.dart';
 import 'package:fixer_app/view/ForgetPassview.dart';
 import 'package:fixer_app/view/Home.dart';
@@ -47,6 +48,7 @@ class fixer extends StatelessWidget {
           YourTask.route: (context) => YourTask(),
           AssignTask.route: (context) => AssignTask(),
           EmployeeTask.route: (context) => EmployeeTask(),
+          CreateTeamPage.route: (context) => CreateTeamPage(),
         });
   }
 }

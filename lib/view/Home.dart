@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fixer_app/Colors/colors.dart';
 import 'package:fixer_app/view/AssignTask.dart';
+import 'package:fixer_app/view/CreateTeam.dart';
 import 'package:fixer_app/view/EmployeeTask.dart';
 import 'package:fixer_app/view/LoginView.dart';
 import 'package:fixer_app/view/Profile.dart';
@@ -177,6 +178,39 @@ class _Home extends State<Home> {
                                       child: ListTile(
                                         title: Text(
                                           'Assign Task',
+                                          style: TextStyle(
+                                              color: Color.fromARGB(
+                                                  255, 59, 58, 58),
+                                              fontSize: 20),
+                                        ),
+                                        trailing: Icon(Icons.arrow_forward),
+                                      ))),
+                              SizedBox(
+                                height: 15,
+                              ),
+                              InkWell(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                        context, CreateTeamPage.route);
+                                  },
+                                  child: Container(
+                                      alignment: Alignment.centerLeft,
+                                      height: 90,
+                                      width: 700,
+                                      padding: EdgeInsets.all(15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[500],
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.1),
+                                            blurRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                      child: ListTile(
+                                        title: Text(
+                                          'Create Team',
                                           style: TextStyle(
                                               color: Color.fromARGB(
                                                   255, 59, 58, 58),
