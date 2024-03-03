@@ -6,6 +6,7 @@ import 'package:fixer_app/view/EmployeeTask.dart';
 import 'package:fixer_app/view/LoginView.dart';
 import 'package:fixer_app/view/Profile.dart';
 import 'package:fixer_app/view/YourTask.dart';
+import 'package:fixer_app/view/YourTeamTask.dart';
 import 'package:flutter/material.dart';
 
 class Home extends StatefulWidget {
@@ -112,6 +113,39 @@ class _Home extends State<Home> {
                                       child: ListTile(
                                         title: Text(
                                           'Your Tasks',
+                                          style: TextStyle(
+                                              color: Color.fromARGB(
+                                                  255, 59, 58, 58),
+                                              fontSize: 20),
+                                        ),
+                                        trailing: Icon(Icons.arrow_forward),
+                                      ))),
+                              SizedBox(
+                                height: 20,
+                              ),
+                              InkWell(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                        context, YourTeamTask.route);
+                                  },
+                                  child: Container(
+                                      alignment: Alignment.centerLeft,
+                                      height: 90,
+                                      width: 700,
+                                      padding: EdgeInsets.all(15),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[500],
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.1),
+                                            blurRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                      child: ListTile(
+                                        title: Text(
+                                          'Your Team Tasks',
                                           style: TextStyle(
                                               color: Color.fromARGB(
                                                   255, 59, 58, 58),

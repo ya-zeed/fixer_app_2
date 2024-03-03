@@ -104,7 +104,10 @@ class _AssignTaskState extends State<AssignTask> {
 
     await FirebaseFirestore.instance.collection('team_task').doc(id).set({
       'tasks': FieldValue.arrayUnion([
-        {"task": newTask, "dueDate": dueDate.toString(), "teamId": id}
+        {
+          "task": newTask, "dueDate": dueDate.toString(), "teamId": id,
+          "userId": uuser?.displayName //id saved as user name
+        }
       ])
     }, SetOptions(merge: true));
 

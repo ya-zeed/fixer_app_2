@@ -9,12 +9,9 @@ class CreateTeamPage extends StatefulWidget {
 
 class _CreateTeamPageState extends State<CreateTeamPage> {
   final _teamIdController = TextEditingController();
-  List<String> _userIds = []; // To dynamically manage user IDs
-  List<TextEditingController> _userIdControllers =
-      []; // Controller for each user ID input
+  List<TextEditingController> _userIdControllers = [];
 
   void _addUserIdField() {
-    // Add a new text editing controller for a new user ID field
     TextEditingController newController = TextEditingController();
     setState(() {
       _userIdControllers.add(newController);
@@ -22,28 +19,34 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
   }
 
   void _removeUserIdField(int index) {
-    // Remove the controller and user ID at the specific index
     setState(() {
       _userIdControllers.removeAt(index);
-      if (_userIds.length > index) {
-        _userIds.removeAt(index);
-      }
     });
   }
 
   void _createTeam() async {
     final teamId = _teamIdController.text.trim();
-    // Update the list of user IDs from the text editing controllers
-    _userIds =
+    final userIds =
         _userIdControllers.map((controller) => controller.text.trim()).toList();
-    if (teamId.isEmpty || _userIds.isEmpty) {
+    if (teamId.isEmpty || userIds.isEmpty) {
       return;
     }
 
     await FirebaseFirestore.instance.collection('teams').doc(teamId).set({
       'teamId': teamId,
-      'userIds': _userIds,
+      'userIds': userIds,
     });
+
+    for (var userId in userIds) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .update({'teamId': teamId});
+      } catch (e) {
+        print('Error updating user $userId: $e');
+      }
+    }
 
     Navigator.pop(context);
   }
@@ -53,7 +56,9 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Create New Team'),
+        backgroundColor: Colors.grey[500],
       ),
+      backgroundColor: Colors.grey[300],
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(

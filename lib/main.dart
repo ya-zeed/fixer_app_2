@@ -11,6 +11,7 @@ import 'package:fixer_app/view/Profile.dart';
 import 'package:fixer_app/view/SignUp.dart';
 import 'package:fixer_app/view/SplashView.dart';
 import 'package:fixer_app/view/YourTask.dart';
+import 'package:fixer_app/view/YourTeamTask.dart';
 import 'package:flutter/material.dart';
 
 void main() async {
@@ -49,6 +50,7 @@ class fixer extends StatelessWidget {
           AssignTask.route: (context) => AssignTask(),
           EmployeeTask.route: (context) => EmployeeTask(),
           CreateTeamPage.route: (context) => CreateTeamPage(),
+          YourTeamTask.route: (context) => YourTeamTask(),
         });
   }
 }

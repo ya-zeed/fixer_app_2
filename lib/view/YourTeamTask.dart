@@ -7,29 +7,19 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-class EmployeeTask extends StatefulWidget {
-  static const String route = 'EmployeeTask';
-  const EmployeeTask({Key? key}) : super(key: key);
+class YourTeamTask extends StatefulWidget {
+  static const String route = 'YourTaskList';
+  const YourTeamTask({Key? key}) : super(key: key);
 
   @override
-  _EmployeeTaskState createState() => _EmployeeTaskState();
+  _YourTeamTaskState createState() => _YourTeamTaskState();
 }
 
-class _EmployeeTaskState extends State<EmployeeTask> {
+class _YourTeamTaskState extends State<YourTeamTask> {
   final User? user = FirebaseAuth.instance.currentUser;
   late Map<String, List<Map<String, String>>> tasksByDay = {};
   File? _imageFile;
   String userImageUrl = '';
-
-  final TextEditingController _employeeIdController = TextEditingController();
-  String? _employeeId;
-
-  @override
-  void dispose() {
-    // Dispose the controller when the widget is removed from the widget tree
-    _employeeIdController.dispose();
-    super.dispose();
-  }
 
   @override
   void initState() {
@@ -44,8 +34,15 @@ class _EmployeeTaskState extends State<EmployeeTask> {
       return;
     }
 
+    var userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userDisplayName)
+        .get();
+
+    var userTeamId = userDoc.data()?['teamId'];
+
     var taskDoc =
-        FirebaseFirestore.instance.collection('tasks').doc(userDisplayName);
+        FirebaseFirestore.instance.collection('team_task').doc(userTeamId);
 
     try {
       var docSnapshot = await taskDoc.get();
@@ -69,8 +66,15 @@ class _EmployeeTaskState extends State<EmployeeTask> {
   Future<String> getImageFromFirestore(String task) async {
     var imageSnapshot;
 
+    var userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.displayName)
+        .get();
+
+    var userTeamId = userDoc.data()?['teamId'];
+
     var taskDoc =
-        FirebaseFirestore.instance.collection('tasks').doc(user?.displayName);
+        FirebaseFirestore.instance.collection('team_task').doc(userTeamId);
 
     var docSnapshot = await taskDoc.get();
     if (docSnapshot.exists) {
@@ -99,20 +103,43 @@ class _EmployeeTaskState extends State<EmployeeTask> {
     return imageSnapshot;
   }
 
-  void getTasksFromFirestore() async {
-    if (_employeeId == null || _employeeId!.isEmpty) {
-      Dialog(
-        child: Container(
-          child: Text('Please enter an employee ID'),
-        ),
-      );
-      return;
-    }
+  Future<void> updateTaskCompletionStatus(String taskId, bool? isDone) async {
+    var userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.displayName)
+        .get();
+
+    var userTeamId = userDoc.data()?['teamId'];
+    var taskDoc =
+        FirebaseFirestore.instance.collection('team_task').doc(userTeamId);
 
     try {
+      var docSnapshot = await taskDoc.get();
+      if (docSnapshot.exists) {
+        var tasks = List.from(docSnapshot.data()?['tasks'] ?? []);
+        var taskIndex = tasks.indexWhere((task) => task['task'] == taskId);
+        if (taskIndex != -1) {
+          tasks[taskIndex]['isDone'] =
+              isDone.toString(); // Update isDone status
+          await taskDoc.update({'tasks': tasks});
+        }
+      }
+    } catch (e) {
+      print('Error updating task completion status: $e');
+    }
+  }
+
+  void getTasksFromFirestore() async {
+    try {
+      var userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.displayName)
+          .get();
+
+      var userTeamId = userDoc.data()?['teamId'];
       var tasksSnapshot = await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(_employeeId)
+          .collection('team_task')
+          .doc(userTeamId)
           .get();
 
       if (tasksSnapshot.exists) {
@@ -145,6 +172,30 @@ class _EmployeeTaskState extends State<EmployeeTask> {
     return grouped;
   }
 
+  Future<String> uploadImageToFirebaseStorage(XFile file, String task) async {
+    File imageFile = File(file.path);
+    String fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
+
+    // Convert the image file to PNG format
+    List<int> imageBytes = await imageFile.readAsBytes();
+    File pngFile = await File('${imageFile.path}.png').writeAsBytes(imageBytes);
+
+    // Upload the PNG file to Firebase Storage
+    firebase_storage.Reference ref =
+        firebase_storage.FirebaseStorage.instance.ref().child(fileName);
+    firebase_storage.UploadTask uploadTask = ref.putFile(pngFile);
+    firebase_storage.TaskSnapshot taskSnapshot = await uploadTask;
+
+    // Get the download URL of the uploaded PNG file
+    String downloadURL = await taskSnapshot.ref.getDownloadURL();
+    saveImageToFirestore(downloadURL, task);
+
+    // Delete the temporary PNG file
+    await pngFile.delete();
+
+    return downloadURL;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,7 +205,7 @@ class _EmployeeTaskState extends State<EmployeeTask> {
           icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Employee Tasks'),
+        title: Text('Your Team Tasks'),
       ),
       backgroundColor: Colors.grey[300],
       body: SingleChildScrollView(
@@ -165,25 +216,13 @@ class _EmployeeTaskState extends State<EmployeeTask> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // New TextField for employee ID
-                TextField(
-                  controller: _employeeIdController,
-                  decoration: InputDecoration(
-                    labelText: 'Employee ID',
-                    border: OutlineInputBorder(),
+                SizedBox(height: 20),
+                Text(
+                  'Your Team Tasks',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
                   ),
-                  onChanged: (value) {
-                    _employeeId = value;
-                  },
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _employeeId = _employeeIdController.text;
-                      getTasksFromFirestore();
-                    });
-                  },
-                  child: Text('Search Tasks'),
                 ),
                 SizedBox(height: 20),
                 ...tasksByDay.entries.map((entry) {
@@ -206,6 +245,41 @@ class _EmployeeTaskState extends State<EmployeeTask> {
                               ),
                               subtitle: Text(
                                   'Due: ${DateFormat('yyyy-MM-DD').format(DateTime.parse(task['dueDate']!))}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: task['isDone'] == 'true',
+                                    onChanged: (bool? newValue) {
+                                      setState(() {
+                                        task['isDone'] = newValue.toString();
+                                        updateTaskCompletionStatus(
+                                            task['task']!,
+                                            newValue); // Implement this method
+                                      });
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.add_a_photo),
+                                    onPressed: () async {
+                                      ImagePicker imagePicker = ImagePicker();
+                                      XFile? file = await imagePicker.pickImage(
+                                        source: ImageSource.camera,
+                                      );
+                                      if (file != null) {
+                                        String imageURL =
+                                            await uploadImageToFirebaseStorage(
+                                                file, task['task']!);
+                                        if (mounted) {
+                                          setState(() {
+                                            _imageFile = File(file.path);
+                                          });
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
                               leading: task['image'] != null
                                   ? GestureDetector(
                                       onTap: () {
