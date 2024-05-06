@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fixer_app/helper/util.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'LocationPicker.dart';
 
 class AssignTask extends StatefulWidget {
   static const String route = 'AssignTask';
@@ -15,13 +18,12 @@ class _AssignTaskState extends State<AssignTask> {
   String newTask = '';
   String id = '';
   DateTime dueDate = DateTime.now();
-  dynamic user;
+  LatLng? pickedLocation;
   final User? uuser = FirebaseAuth.instance.currentUser;
-  String assignTo = 'Employee'; // New variable to track the selection
-  final List<String> assignOptions = [
-    'Employee',
-    'Team'
-  ]; // Options for the dropdown
+  dynamic user;
+
+  String assignTo = 'Employee';
+  final List<String> assignOptions = ['Employee', 'Team'];
 
   Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -30,10 +32,26 @@ class _AssignTaskState extends State<AssignTask> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null && picked != dueDate)
+    if (picked != null && picked != dueDate) {
       setState(() {
         dueDate = picked;
       });
+    }
+  }
+
+  Future<void> _pickLocation(BuildContext context) async {
+    final LatLng? result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(initialLocation: pickedLocation),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        pickedLocation = result;
+      });
+    }
   }
 
   void saveTasksToFirestore() async {
@@ -63,15 +81,32 @@ class _AssignTaskState extends State<AssignTask> {
       return;
     }
 
+    if (pickedLocation == null) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            content: Text('Please pick a location'),
+          );
+        },
+      );
+      return;
+    }
+
     await FirebaseFirestore.instance.collection('tasks').doc(id).set({
       'tasks': FieldValue.arrayUnion([
         {
           "task": newTask,
           "dueDate": dueDate.toString(),
-          "userId": uuser?.displayName //id saved as user name
+          "userId": uuser?.displayName, //id saved as user name
+          "latitude": pickedLocation?.latitude.toString(),
+          "longitude": pickedLocation?.longitude.toString(),
         }
       ])
     }, SetOptions(merge: true));
+
+    await sendEmail(user['email'], 'Task Created Successfully',
+        "A new task has been assigned to you. Please check the app for more details.");
 
     showDialog(
       context: context,
@@ -102,14 +137,42 @@ class _AssignTaskState extends State<AssignTask> {
       return;
     }
 
+    if (pickedLocation == null) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            content: Text('Please pick a location'),
+          );
+        },
+      );
+      return;
+    }
+
     await FirebaseFirestore.instance.collection('team_task').doc(id).set({
       'tasks': FieldValue.arrayUnion([
         {
-          "task": newTask, "dueDate": dueDate.toString(), "teamId": id,
-          "userId": uuser?.displayName //id saved as user name
+          "task": newTask,
+          "dueDate": dueDate.toString(),
+          "teamId": id,
+          "userId": uuser?.displayName,
+          "latitude": pickedLocation?.latitude.toString(),
+          "longitude": pickedLocation?.longitude.toString(),
         }
       ])
     }, SetOptions(merge: true));
+
+    final teamMembers = team['userIds'];
+    for (final member in teamMembers) {
+      final memberData = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(member)
+          .get()
+          .then((value) => value.data());
+
+      await sendEmail(memberData?['email'], 'Task Created Successfully',
+          "A new task has been assigned to your team. Please check the app for more details.");
+    }
 
     showDialog(
       context: context,
@@ -142,21 +205,12 @@ class _AssignTaskState extends State<AssignTask> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: 20),
-                Text(
-                  'Assign',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 20),
                 DropdownButton<String>(
                   value: assignTo,
                   onChanged: (String? newValue) {
                     setState(() {
                       assignTo = newValue!;
-                      id =
-                          ''; // Reset the ID field whenever the selection changes
+                      id = '';
                     });
                   },
                   items: assignOptions
@@ -205,12 +259,13 @@ class _AssignTaskState extends State<AssignTask> {
                 ),
                 SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      saveTasksToFirestore();
-                    });
-                  },
-                  child: Text('Add Task'),
+                  onPressed: () => _pickLocation(context),
+                  child: Text('Pick Location'),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: saveTasksToFirestore,
+                  child: Text('Save Task'),
                 ),
                 SizedBox(height: 20),
               ],

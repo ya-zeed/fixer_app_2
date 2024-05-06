@@ -3,7 +3,10 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:fixer_app/helper/util.dart';
+import 'package:fixer_app/view/LocationPicker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -99,6 +102,16 @@ class _YourTaskState extends State<YourTask> {
         var tasks = List.from(docSnapshot.data()?['tasks'] ?? []);
         var taskIndex = tasks.indexWhere((task) => task['task'] == taskId);
         if (taskIndex != -1) {
+          if (isDone!) {
+            final supervisor = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(tasks[taskIndex]['userId'])
+                .get()
+                .then((value) => value.data());
+
+            sendEmail(supervisor?['email'], 'Task Completed',
+                'The task ${tasks[taskIndex]['task']} has been completed by ${user?.displayName}');
+          }
           tasks[taskIndex]['isDone'] =
               isDone.toString(); // Update isDone status
           await taskDoc.update({'tasks': tasks});
@@ -250,6 +263,24 @@ class _YourTaskState extends State<YourTask> {
                                           });
                                         }
                                       }
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.map_sharp),
+                                    onPressed: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => LocationPicker(
+                                            initialLocation: LatLng(
+                                              double.parse(
+                                                  task['latitude'] ?? '0'),
+                                              double.parse(
+                                                  task['longitude'] ?? '0'),
+                                            ),
+                                          ),
+                                        ),
+                                      );
                                     },
                                   ),
                                 ],
